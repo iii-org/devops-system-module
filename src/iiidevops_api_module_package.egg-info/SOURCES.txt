@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+setup.cfg
+setup.py
+src/iiidevops_api_module_package.egg-info/PKG-INFO
+src/iiidevops_api_module_package.egg-info/SOURCES.txt
+src/iiidevops_api_module_package.egg-info/dependency_links.txt
+src/iiidevops_api_module_package.egg-info/requires.txt
+src/iiidevops_api_module_package.egg-info/top_level.txt

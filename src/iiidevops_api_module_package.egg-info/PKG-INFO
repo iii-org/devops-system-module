@@ -1,0 +1,19 @@
+Metadata-Version: 2.1
+Name: iiidevops-api-module-package
+Version: 0.0.1
+Summary: A package template
+Author: iiiorg
+Author-email: tech@iii-devops.org
+Requires-Python: >=3.9.12
+Description-Content-Type: text/markdown
+
+# package_template
+A Template to build a PIP package
+
+## Installation
+Install my-project with pip
+```bash
+  pip install package_template
+```
+## Requirements
+* redis==4.5.3

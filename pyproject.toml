@@ -1,0 +1,16 @@
+[project]
+name = "iiidevops_api_module_package"
+version = "0.0.1"
+dependencies = [
+   "redis"
+]
+
+
+[build-system]
+
+requires = [
+   "setuptools",
+   "wheel",
+   "redis"
+]
+build-backend = "setuptools.build_meta"
