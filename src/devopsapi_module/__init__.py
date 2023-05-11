@@ -1,1 +1,0 @@
-name = "devopsapi_module"
