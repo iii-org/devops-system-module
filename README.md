@@ -8,3 +8,9 @@ Install my-project with pip
 ```
 ## Requirements
 * redis==4.5.3
+
+
+# Documentation for API Endpoints
+Class | Method | Description
+------------ | ------------- | -------------
+redis | [**redis**](docs/redis.md) | IIIdevops operator redis and related function

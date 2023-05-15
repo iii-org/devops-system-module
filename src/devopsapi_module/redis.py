@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
-from typing import Any, Optional
-
+from typing import Any, Optional, Union
+import os
 import redis
 
 
@@ -11,8 +11,6 @@ SERVER_ALIVE_KEY = "system_all_alive"
 TEMPLATE_CACHE = "template_list_cache"
 SHOULD_UPDATE_TEMPLATE = "should_update_template"
 ISSUE_PJ_USER_RELATION_KEY = "issue_pj_user_relation"
-PLUGINS_SOFTWARE_SWITCH = "plugins_software_switch"
-
 
 class RedisOperator:
     def __init__(self, redis_base_url):
@@ -24,18 +22,26 @@ class RedisOperator:
             decode_responses=True,
         )
         self.r = redis.Redis(connection_pool=self.pool)
-
+ 
     #####################
     # String type
     #####################
-    def str_get(self, key):
+    def str_get(self, key: str) -> str:
         return self.r.get(key)
 
-    def str_set(self, key, value):
+    def str_set(self, key: str, value: str) -> bool:
+        """
+        :return: The action is successful or not
+            True / False
+        """
         return self.r.set(key, value)
 
-    def str_delete(self, key):
-        self.r.delete(key)
+    def str_delete(self, key) -> bool:
+        """
+        :return: The action is successful or not
+            True / False
+        """
+        return self.r.delete(key) == 1
 
     #####################
     # Boolean type
@@ -83,72 +89,73 @@ class RedisOperator:
         else:
             return False
 
-    #####################
+    #####################e
     # Dictionary type
     #####################
-    def dict_set_all(self, key, value):
-        return self.r.hset(key, mapping=value)
+    def dict_set_all(self, key: str, value: dict[str, str]) -> bool:
+        return self.r.hset(key, mapping=value) == 1
 
-    def dict_set_certain(self, key, sub_key, value):
-        return self.r.hset(key, sub_key, value)
+    def dict_set_certain(self, key: str, sub_key: str, value: str) -> bool:
+        return self.r.hset(key, sub_key, value) == 1
 
-    def dict_calculate_certain(self, key, sub_key, num=1):
-        return self.r.hincrby(key, sub_key, amount=num)
-
-    def dict_get_all(self, key):
+    def dict_get_all(self, key: str) -> dict[str, str]:
         return self.r.hgetall(key)
 
-    def dict_get_certain(self, key, sub_key):
+    def dict_get_certain(self, key: str, sub_key: Union[str, int]) -> str:
         return self.r.hget(key, sub_key)
 
-    def dict_delete_certain(self, key, sub_key):
-        return self.r.hdel(key, sub_key)
+    def dict_delete_certain(self, key: str, sub_key: str) -> bool:
+        return self.r.hdel(key, sub_key) == 1
 
-    def dict_delete_all(self, key):
+    def dict_delete_all(self, key: str) -> str:
         value = self.r.hgetall(key)
         self.r.delete(key)
         return value
 
-    def list_keys(self, pattern):
-        return [key for key in self.r.scan_iter(pattern)]
-
-    def dict_len(self, key):
+    def dict_len(self, key: str) -> int:
         return self.r.hlen(key)
 
 
-redis_op = RedisOperator()
+redis_op = RedisOperator(os.getenv("REDIS_BASE_URL"))
 
-# Server Alive
+
+#####################
+#  Server Alive
+#####################
 """
-'True': Alive, 'False': Not alive
+Due to redis can only store in string type, 
+- 'True' : Server is alive
+- 'False': Server is not alive
 """
 
-
-def get_server_alive():
+def get_server_alive() -> bool:
     status = redis_op.str_get(SERVER_ALIVE_KEY)
     return status == "True" if status is not None else status
 
 
-def update_server_alive(alive):
+def update_server_alive(alive) -> bool:
     return redis_op.str_set(SERVER_ALIVE_KEY, alive)
 
 
+#####################
 # Issue Family Cache
+#####################
+
 def get_all_issue_relations():
     return redis_op.dict_get_all(ISSUE_FAMILIES_KEY)
 
 
-def check_issue_has_son(issue_id: int, by_user_permission: bool = False) -> bool:
-    issue_has_son = redis_op.r.hexists(ISSUE_FAMILIES_KEY, issue_id)
-    if not issue_has_son or not by_user_permission:
-        return issue_has_son
+# def check_issue_has_son(issue_id: int, by_user_permission: bool = False) -> bool:
+#     issue_has_son = redis_op.r.hexists(ISSUE_FAMILIES_KEY, issue_id)
+#     if not issue_has_son or not by_user_permission:
+#         return issue_has_son
 
-    son_issue_ids = redis_op.dict_get_certain(ISSUE_FAMILIES_KEY, issue_id)
-    has_issue_per_bools = []
-    for son_issue_id in son_issue_ids.split(","):
-        has_issue_per_bools.append(check_user_has_permission_to_see_issue(son_issue_id))
+#     son_issue_ids = redis_op.dict_get_certain(ISSUE_FAMILIES_KEY, issue_id)
+#     has_issue_per_bools = []
+#     for son_issue_id in son_issue_ids.split(","):
+#         has_issue_per_bools.append(check_user_has_permission_to_see_issue(son_issue_id))
 
-    return any(has_issue_per_bools)
+#     return any(has_issue_per_bools)
 
 
 def update_issue_relations(issue_families):
@@ -178,54 +185,20 @@ def remove_issue_relations(parent_issue_id):
     redis_op.dict_delete_certain(ISSUE_FAMILIES_KEY, parent_issue_id)
 
 
-def add_issue_relation(parent_issue_id, son_issue_id):
-    if not check_issue_has_son(parent_issue_id):
-        redis_op.dict_set_certain(ISSUE_FAMILIES_KEY, parent_issue_id, str(son_issue_id))
-    else:
-        son_issue_ids = redis_op.dict_get_certain(ISSUE_FAMILIES_KEY, parent_issue_id)
-        son_issue_ids = son_issue_ids.split(",")
-        if son_issue_id not in son_issue_ids:
-            update_issue_relation(parent_issue_id, ",".join(son_issue_ids + [str(son_issue_id)]))
+# def add_issue_relation(parent_issue_id, son_issue_id):
+#     if not check_issue_has_son(parent_issue_id):
+#         redis_op.dict_set_certain(ISSUE_FAMILIES_KEY, parent_issue_id, str(son_issue_id))
+#     else:
+#         son_issue_ids = redis_op.dict_get_certain(ISSUE_FAMILIES_KEY, parent_issue_id)
+#         son_issue_ids = son_issue_ids.split(",")
+#         if son_issue_id not in son_issue_ids:
+#             update_issue_relation(parent_issue_id, ",".join(son_issue_ids + [str(son_issue_id)]))
 
 
-# Issue project user realtion Cache
-"""
-Don't need this redis table if we do not repley on redmine.
-"""
-
-
-def get_single_issue_pj_user_relation(issue_id: int, pj_belong_users: list[str]) -> dict[int, Any]:
-    redis_data = redis_op.dict_get_certain(ISSUE_PJ_USER_RELATION_KEY, issue_id)
-    if not redis_data:
-        return {}
-    out = json.loads(redis_data)
-    out["project_users"] = pj_belong_users
-    # pj_obj = model.Project.query.filter_by(id=out["project_id"]).first()
-    # if pj_obj is not None:
-    #     out["project_users"] = [str(user["id"]) for user in pj_obj.users]
-    return out
-
-
-def update_issue_pj_user_relation(issue_id: int, issue_pj_user_relation: dict[str, Any]) -> None:
-    return redis_op.dict_set_certain(ISSUE_PJ_USER_RELATION_KEY, issue_id, issue_pj_user_relation)
-
-
-def update_issue_pj_user_relations(issue_pj_user_relations: dict[int, Any]) -> None:
-    if issue_pj_user_relations != {}:
-        remove_issue_pj_user_relations()
-        redis_op.dict_set_all(ISSUE_PJ_USER_RELATION_KEY, issue_pj_user_relations)
-
-
-def remove_issue_pj_user_relations() -> None:
-    redis_op.dict_delete_all(ISSUE_PJ_USER_RELATION_KEY)
-
-
-def check_user_has_permission_to_see_issue(user_id: int, issue_id: int) -> bool:
-    pj_users = get_single_issue_pj_user_relation(int(issue_id)).get("project_users", "")
-    return str(user_id) in pj_users
-
-
+#####################
 # Project issue calculate Cache
+#####################
+
 def get_certain_pj_issue_calc(pj_id):
     cal_info = redis_op.dict_get_certain(PROJECT_ISSUE_CALCULATE_KEY, pj_id)
     if cal_info is None:
@@ -265,7 +238,48 @@ def update_pj_issue_calc(pj_id, total_count=0, closed_count=0):
     return redis_op.dict_set_certain(PROJECT_ISSUE_CALCULATE_KEY, pj_id, json.dumps(pj_issue_calc))
 
 
+#####################
+# Issue project user relation Cache
+#####################
+"""
+Don't need this redis table when we remove redmine.
+"""
+
+# def get_single_issue_pj_user_relation(issue_id: int) -> dict[int, Any]:
+#     redis_data = redis_op.dict_get_certain(ISSUE_PJ_USER_RELATION_KEY, issue_id)
+#     if not redis_data:
+#         return {}
+#     out = json.loads(redis_data)
+
+    # pj_obj = model.Project.query.filter_by(id=out["project_id"]).first()
+    # if pj_obj is not None:
+    #     out["project_users"] = [str(user["id"]) for user in pj_obj.users]
+    # return out
+
+
+def update_issue_pj_user_relation(issue_id: int, issue_pj_user_relation: dict[str, Any]) -> None:
+    return redis_op.dict_set_certain(ISSUE_PJ_USER_RELATION_KEY, issue_id, issue_pj_user_relation)
+
+
+def update_issue_pj_user_relations(issue_pj_user_relations: dict[int, Any]) -> None:
+    if issue_pj_user_relations != {}:
+        remove_issue_pj_user_relations()
+        redis_op.dict_set_all(ISSUE_PJ_USER_RELATION_KEY, issue_pj_user_relations)
+
+
+def remove_issue_pj_user_relations() -> None:
+    redis_op.dict_delete_all(ISSUE_PJ_USER_RELATION_KEY)
+
+
+# def check_user_has_permission_to_see_issue(issue_id: int, user_id: str) -> bool:
+#     pj_users = get_single_issue_pj_user_relation(int(issue_id)).get("project_users", "")
+#     return user_id in pj_users
+
+
+#####################
 # Template cache
+#####################
+
 def update_template_cache_all(data: dict) -> None:
     print(f"Before data {redis_op.dict_get_all(TEMPLATE_CACHE)}")
     if data:
@@ -307,27 +321,3 @@ def count_template_number():
     return redis_op.dict_len(TEMPLATE_CACHE)
 
 
-# plugins software_switch
-def update_plugins_software_switch(plugins_name: str, disabled: bool):
-    return redis_op.dict_set_certain(PLUGINS_SOFTWARE_SWITCH, plugins_name, str(disabled).lower())
-
-
-def get_plugins_software_switch_all() -> dict[str, Any]:
-    return redis_op.dict_get_all(PLUGINS_SOFTWARE_SWITCH)
-
-
-def delete_plugins_software_switch() -> None:
-    """
-    Delete all plugins software switch.
-
-    :return: None
-    """
-    redis_op.dict_delete_all(PLUGINS_SOFTWARE_SWITCH)
-
-
-def update_plugins_software_switch_all(data: dict) -> None:
-    print(f"Before data {redis_op.dict_get_all(PLUGINS_SOFTWARE_SWITCH)}")
-    if data:
-        delete_plugins_software_switch()
-        for key in data.keys():
-            update_plugins_software_switch(key, data[key])
