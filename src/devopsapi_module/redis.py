@@ -118,7 +118,7 @@ class RedisOperator:
 
 redis_op = RedisOperator(os.getenv("REDIS_BASE_URL"))
 
-
+'''
 #####################
 #  Server Alive
 #####################
@@ -321,3 +321,4 @@ def count_template_number():
     return redis_op.dict_len(TEMPLATE_CACHE)
 
 
+'''
