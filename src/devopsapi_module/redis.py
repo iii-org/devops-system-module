@@ -93,9 +93,17 @@ class RedisOperator:
     # Dictionary type
     #####################
     def dict_set_all(self, key: str, value: dict[str, str]) -> bool:
+        """
+        :return: The action is successful or not
+            True / False
+        """
         return self.r.hset(key, mapping=value) == 1
 
     def dict_set_certain(self, key: str, sub_key: str, value: str) -> bool:
+        """
+        :return: The action is successful or not
+            True / False
+        """
         return self.r.hset(key, sub_key, value) == 1
 
     def dict_get_all(self, key: str) -> dict[str, str]:
@@ -117,6 +125,71 @@ class RedisOperator:
 
 
 redis_op = RedisOperator(os.getenv("REDIS_BASE_URL"))
+
+
+#####################
+# Template cache
+#####################
+
+def update_template_cache_all(data: dict) -> None:
+    """
+    Handy function to update all template cache.
+
+    :return: None.
+    """
+    if data:
+        delete_template_cache()
+        redis_op.dict_set_all(TEMPLATE_CACHE, data)
+        redis_op.bool_set(SHOULD_UPDATE_TEMPLATE, False)
+
+
+def should_update_template_cache() -> bool:
+    """
+    Handy function to check if template cache should be updated.
+
+    :return: Redis value of template cache update flag.
+    """
+    return redis_op.bool_get(SHOULD_UPDATE_TEMPLATE)
+
+
+def delete_template_cache() -> None:
+    """
+    Delete all template cache.
+
+    :return: None
+    """
+    redis_op.dict_delete_all(TEMPLATE_CACHE)
+    redis_op.bool_set(SHOULD_UPDATE_TEMPLATE, True)
+
+
+def update_template_cache(id, dict_val) -> None:
+    """
+    Handy function to update certain template cache.
+
+    :return: None.
+    """
+    redis_op.dict_set_certain(TEMPLATE_CACHE, id, json.dumps(dict_val, default=str))
+
+
+def get_template_caches_all():
+    """
+    Handy function to return all template cache.
+
+    :return: Redis value of all template cache.
+    """
+    redis_data: dict[str, str] = redis_op.dict_get_all(TEMPLATE_CACHE)
+    out: list[dict[str, Any]] = [{_: json.loads(redis_data[_])} for _ in redis_data]
+    return out
+
+
+def count_template_number() -> int:
+    """
+    Count the number of all templates
+
+    :return: number of templates
+    """
+    return redis_op.dict_len(TEMPLATE_CACHE)
+
 
 '''
 #####################
@@ -274,51 +347,6 @@ def remove_issue_pj_user_relations() -> None:
 # def check_user_has_permission_to_see_issue(issue_id: int, user_id: str) -> bool:
 #     pj_users = get_single_issue_pj_user_relation(int(issue_id)).get("project_users", "")
 #     return user_id in pj_users
-
-
-#####################
-# Template cache
-#####################
-
-def update_template_cache_all(data: dict) -> None:
-    print(f"Before data {redis_op.dict_get_all(TEMPLATE_CACHE)}")
-    if data:
-        delete_template_cache()
-        redis_op.dict_set_all(TEMPLATE_CACHE, data)
-        redis_op.bool_set(SHOULD_UPDATE_TEMPLATE, False)
-
-
-def should_update_template_cache() -> bool:
-    """
-    Handy function to check if template cache should be updated.
-
-    :return: Redis value of template cache update flag.
-    """
-    return redis_op.bool_get(SHOULD_UPDATE_TEMPLATE)
-
-
-def delete_template_cache() -> None:
-    """
-    Delete all template cache.
-
-    :return: None
-    """
-    redis_op.dict_delete_all(TEMPLATE_CACHE)
-    redis_op.bool_set(SHOULD_UPDATE_TEMPLATE, True)
-
-
-def update_template_cache(id, dict_val):
-    redis_op.dict_set_certain(TEMPLATE_CACHE, id, json.dumps(dict_val, default=str))
-
-
-def get_template_caches_all():
-    redis_data: dict[str, str] = redis_op.dict_get_all(TEMPLATE_CACHE)
-    out: list[dict[str, Any]] = [{_: json.loads(redis_data[_])} for _ in redis_data]
-    return out
-
-
-def count_template_number():
-    return redis_op.dict_len(TEMPLATE_CACHE)
 
 
 '''
