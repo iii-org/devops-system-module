@@ -1,6 +1,3 @@
-# package_template
-A Template to build a PIP package
-
 # How to build it.
 ```bash
   python3 -m build
