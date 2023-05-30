@@ -1,4 +1,4 @@
-# How to build it.
+## How to build it.
 ```bash
   python3 -m build
 ```
