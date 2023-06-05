@@ -1,0 +1,8 @@
+README.md
+pyproject.toml
+setup.py
+devopsapi_module.egg-info/PKG-INFO
+devopsapi_module.egg-info/SOURCES.txt
+devopsapi_module.egg-info/dependency_links.txt
+devopsapi_module.egg-info/requires.txt
+devopsapi_module.egg-info/top_level.txt
