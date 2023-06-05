@@ -6,4 +6,5 @@ setup(
     install_requires=[
         'redis'
     ],
+    packages=['devopsapi_module']
 )

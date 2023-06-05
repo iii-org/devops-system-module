@@ -1,6 +1,9 @@
 README.md
 pyproject.toml
 setup.py
+devopsapi_module/__init__.py
+devopsapi_module/logger.py
+devopsapi_module/redis.py
 devopsapi_module.egg-info/PKG-INFO
 devopsapi_module.egg-info/SOURCES.txt
 devopsapi_module.egg-info/dependency_links.txt
