@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='devopsapi_module',
@@ -6,4 +6,5 @@ setup(
     install_requires=[
         'redis'
     ],
+    packages=find_packages()
 )
