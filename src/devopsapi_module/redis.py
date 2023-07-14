@@ -12,6 +12,7 @@ TEMPLATE_CACHE = "template_list_cache"
 SHOULD_UPDATE_TEMPLATE = "should_update_template"
 ISSUE_PJ_USER_RELATION_KEY = "issue_pj_user_relation"
 
+
 class RedisOperator:
     def __init__(self, redis_base_url):
         self.redis_base_url = redis_base_url
@@ -22,7 +23,7 @@ class RedisOperator:
             decode_responses=True,
         )
         self.r = redis.Redis(connection_pool=self.pool)
- 
+
     #####################
     # String type
     #####################
@@ -130,6 +131,7 @@ redis_op = RedisOperator(os.getenv("REDIS_BASE_URL"))
 #####################
 # Template cache
 #####################
+
 
 def update_template_cache_all(data: dict) -> None:
     """

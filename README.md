@@ -10,6 +10,8 @@ Install my-project with pip
 ```
 ## Requirements
 * redis==4.5.3
+* python-gitlab==3.13.0
+* requests==2.28.2
 
 
 # Documentation for API Endpoints

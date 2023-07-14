@@ -1,0 +1,5 @@
+.vscode
+requirements.txt
+.env
+.pre-commit-config.yml
+*.pyc
