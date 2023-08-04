@@ -1,0 +1,21 @@
+include:
+- project: iiidevops-templates/ci-template
+  file: ci/template.gitlab-ci.yml
+stages:
+- initial
+- scan
+- build
+- deploy
+- test
+Test--SonarQube source code scan:
+  variables:
+    iiidevops: sonarqube
+    CHART_TYPE: normal
+  only:
+  - master
+Test--Checkmarx source code scan:
+  variables:
+    iiidevops: checkmarx
+  only:
+  - master
+
