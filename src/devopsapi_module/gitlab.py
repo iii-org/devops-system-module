@@ -2,6 +2,7 @@ import os
 from module.request import Request
 from typing import Any
 from gitlab import Gitlab as IIIGitlab
+from module.exception import GitLabException
 
 # ======== for typing ========
 from requests.models import Response
@@ -330,7 +331,7 @@ class GitLabOperator(Request):
             params = {"per_page": 25, "page": i}
             output = self.api_get(f"/projects/{repo_id}/repository/branches", params=params)
             if output.status_code != 200:
-                raise Exception({"status_code": output.status_code, "message": "Error while getting git branches"})
+                raise GitLabException(message=f"Error while getting git branches, message: {output.json}")
             gl_total_branch_list.extend(output.json())
             total_pages = int(output.headers.get("x-total-pages", total_pages))
             i += 1
@@ -391,7 +392,7 @@ class GitLabOperator(Request):
             data={"branch": branch, "commit_message": commit_message, "actions": actions},
         ).json()
 
-    def gl_get_commits_by_author(self, repo_id: str, branch: str, author: str = None) -> dict[str, Any]:
+    def gl_get_commits_by_author(self, repo_id: str, branch: str, author: str = None) -> list[dict]:
         commits = self.gl_get_commits(repo_id, branch)
         if author is None:
             return commits

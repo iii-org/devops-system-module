@@ -3,7 +3,7 @@ import json
 
 
 # ======== for typing ========
-from typing import Any
+from typing import Any, Union
 from requests.models import Response
 
 
@@ -24,11 +24,15 @@ class Request:
         self,
         method: str,
         path: str,
-        headers: dict[str, Any] = {},
-        params: dict[str, Any] = {},
-        data: dict[str, Any] = {},
+        headers: Union[dict[str, Any], None] = None,
+        params: Union[dict[str, Any], None] = None,
+        data: Union[dict[str, Any], None] = None,
     ) -> Response:
         url, req_func = f"{self.url}{path}", self.__get_request_func(method)
+
+        headers = headers if headers else {}
+        params = params if params else {}
+        data = data if data else {}
 
         if data:
             data = json.dumps(data)
@@ -47,9 +51,12 @@ class Request:
     def api_get(
         self,
         path: str,
-        headers: dict[str, Any] = {},
-        params: dict[str, Any] = {},
+        headers: Union[dict[str, Any], None] = None,
+        params: Union[dict[str, Any], None] = None,
     ) -> Response:
+        headers = headers if headers else {}
+        params = params if params else {}
+
         return self.api_request(
             "GET",
             path,
@@ -60,11 +67,14 @@ class Request:
     def api_post(
         self,
         path: str,
-        params: dict[str, Any] = {},
-        headers: dict[str, Any] = {},
-        data: dict[str, Any] = {},
+        params: Union[dict[str, Any], None] = None,
+        headers: Union[dict[str, Any], None] = None,
+        data: Union[dict[str, Any], None] = None,
     ) -> Response:
-        data = json.dumps(data)
+        headers = headers if headers else {}
+        params = params if params else {}
+        data = data if data else {}
+
         return self.api_request(
             "POST",
             path,
@@ -76,10 +86,14 @@ class Request:
     def api_put(
         self,
         path: str,
-        params: dict[str, Any] = {},
-        headers: dict[str, Any] = {},
-        data: dict[str, Any] = {},
+        params: Union[dict[str, Any], None] = None,
+        headers: Union[dict[str, Any], None] = None,
+        data: Union[dict[str, Any], None] = None,
     ) -> Response:
+        headers = headers if headers else {}
+        params = params if params else {}
+        data = data if data else {}
+
         return self.api_request(
             "PUT",
             path,
@@ -91,9 +105,12 @@ class Request:
     def api_patch(
         self,
         path: str,
-        headers: dict[str, Any] = {},
-        data: dict[str, Any] = {},
+        headers: Union[dict[str, Any], None] = None,
+        data: Union[dict[str, Any], None] = None,
     ) -> Response:
+        headers = headers if headers else {}
+        data = data if data else {}
+
         return self.api_request(
             "PATCH",
             path,
@@ -104,9 +121,12 @@ class Request:
     def api_delete(
         self,
         path: str,
-        headers: dict[str, Any] = {},
-        data: dict[str, Any] = {},
+        headers: Union[dict[str, Any], None] = None,
+        data: Union[dict[str, Any], None] = None,
     ) -> Response:
+        headers = headers if headers else {}
+        data = data if data else {}
+
         return self.api_request(
             "DELETE",
             path,
