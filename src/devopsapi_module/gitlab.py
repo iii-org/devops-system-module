@@ -1,5 +1,6 @@
 import os
 from module.request import Request
+from module.utils import check_dict_has_certain_keys
 from gitlab import Gitlab as IIIGitlab
 from module.exception import GitLabException
 from module import config
@@ -70,15 +71,17 @@ class GitLabOperator(Request):
                 break
         return result
 
-    def gl_create_project(self, args: dict[str, Any]) -> Response:
+    def gl_create_project(self, kwargs: dict[str, Any]) -> Response:
         """
         Args:
-            args:
+            kwargs:
             - *name: project name
             - namespace_id: group of the project
             - *description: project's description
         """
-        return self.api_post("/projects", params=args, headers=self.headers).json()
+        check_dict_has_certain_keys(kwargs, ["name", "description"])
+
+        return self.api_post("/projects", params=kwargs, headers=self.headers).json()
 
     def create_project(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         """
@@ -88,6 +91,8 @@ class GitLabOperator(Request):
             - group_name: group of the project
             - *description: project's description
         """
+        check_dict_has_certain_keys(kwargs, ["name", "description"])
+
         group_name = kwargs.pop("group_name", DEFAULT_REPO)
         group_info = self.gl_get_specific_namespace(group_name)
         if not group_info:
@@ -109,10 +114,28 @@ class GitLabOperator(Request):
     def gl_delete_project(self, repo_id: str) -> Response:
         return self.api_delete(f"/projects/{repo_id}", headers=self.headers)
 
+    def gl_archive_project(self, repo_id: str, is_disabled: bool) -> dict[str, Any]:
+        status = "archive" if is_disabled else "unarchive"
+        path = f"/projects/{repo_id}/{status}"
+        return self.api_post(path, headers=self.headers).json()
+
+    #####################
+    # Project resource
+    #####################
+
+    def gl_get_storage_usage(self, repo_id: str) -> dict[str, Any]:
+        project_detail = self.gl_get_project(repo_id)
+        usage_info = {"title": "GitLab", "used": {}, "quota": {}}
+        usage_info["used"]["value"] = project_detail["statistics"]["storage_size"]
+        usage_info["used"]["unit"] = ""
+        usage_info["quota"]["value"] = "1073741824"
+        usage_info["quota"]["unit"] = ""
+        return usage_info
+
     #####################
     # User
     #####################
-    def gl_get_user_list(self, args) -> Response:
+    def gl_get_user_list(self, kwargs) -> Response:
         """
         Args:
             kwargs:
@@ -121,9 +144,9 @@ class GitLabOperator(Request):
             - active: Filters only active users. Default is false.
             - blocked: Filters only blocked users. Default is false.
         """
-        return self.api_get("/users", params=args, headers=self.headers)
+        return self.api_get("/users", params=kwargs, headers=self.headers)
 
-    def gl_create_user(self, args, user_source_password: str, is_admin: bool = False) -> Response:
+    def gl_create_user(self, kwargs, user_source_password: str, is_admin: bool = False) -> Response:
         """
         Args:
             kwargs:
@@ -135,9 +158,9 @@ class GitLabOperator(Request):
             - skip_confirmation: Do not need to confirm, False by default.
         """
         data = {
-            "name": args["name"],
-            "email": args["email"],
-            "username": args["login"],
+            "name": kwargs["name"],
+            "email": kwargs["email"],
+            "username": kwargs["login"],
             "password": user_source_password,
             "skip_confirmation": True,
         }
@@ -173,6 +196,11 @@ class GitLabOperator(Request):
     def gl_delete_user(self, repository_user_id: str) -> Response:
         return self.api_delete(f"/users/{repository_user_id}")
 
+    def gl_create_user_access_token(self, repository_user_id: str) -> str:
+        data = {"name": "IIIDevops Helm source code analysis", "scopes": ["read_api"]}
+        output = self.__api_post(f"/users/{repository_user_id}/impersonation_tokens", data=data).json()
+        return output["token"]
+
     #####################
     # Project's members
     #####################
@@ -205,25 +233,29 @@ class GitLabOperator(Request):
     def gl_get_global_variable(self, key: str) -> dict[str, Any]:
         return self.api_get(f"/admin/ci/variables/{key}", headers=self.headers).json()
 
-    def gl_create_global_variable(self, data: dict[str, str]) -> dict[str, Any]:
+    def gl_create_global_variable(self, kwargs: dict[str, str]) -> dict[str, Any]:
         """
         Args:
-            data:
-            - key: key of the variable
-            - value: content of the variable
+            kwargs:
+            - *key: key of the variable
+            - *value: content of the variable
             - variable_type: env_var / file
         """
-        return self.api_post("/admin/ci/variables", data=data, headers=self.headers).json()
+        check_dict_has_certain_keys(kwargs, ["key", "value"])
+
+        return self.api_post("/admin/ci/variables", data=kwargs, headers=self.headers).json()
 
     def gl_update_global_variable(self, key: str, data: dict[str, str]) -> dict[str, Any]:
         """
         Args:
             data:
-            - value(str): content of the variable
+            - *value(str): content of the variable
             - variable_type(str): env_var / file
             - protected(bool):
             - masked(bool):
         """
+        check_dict_has_certain_keys(data, ["value"])
+
         return self.api_put(f"/admin/ci/variables/{key}", data=data, headers=self.headers).json()
 
     def gl_delete_global_variable(self, key: str) -> dict[str, Any]:
@@ -236,19 +268,26 @@ class GitLabOperator(Request):
         """
         Args:
             data:
-            - key(str): key of the variable
-            - value(str): content of the variable
+            - *key(str): key of the variable
+            - *value(str): content of the variable
             - variable_type(str): env_var / file
             - protected(bool): only export variable on protected branch
             - masked(bool): value will be masked in job logs
             - raw: treated special character as the start of a reference to another variable
         """
+        check_dict_has_certain_keys(data, ["key", "value"])
+
         return self.api_post(f"/projects/{repo_id}/variables", data=data, headers=self.headers).json
 
     def gl_delete_pj_variable(self, repo_id: int, key: str) -> dict[str, Any]:
         return self.api_delete(f"/projects/{repo_id}/variables/{key}", headers=self.headers).json
 
-    def create_pj_variable(self, repo_id: int, key: str, value: str, attribute: dict[str, Any] = {}) -> dict[str, Any]:
+    def create_pj_variable(
+        self, repo_id: int, key: str, value: str, attribute: Union[dict[str, Any], None] = None
+    ) -> dict[str, Any]:
+        if attribute is None:
+            attribute = {}
+
         data = {"variable_type": "env_var", "protected": False, "masked": True, "raw": True}
         data |= attribute
         data.update({"key": key, "value": value})
@@ -355,6 +394,8 @@ class GitLabOperator(Request):
             - *branch: Name of the branch.
             - *ref: Branch name or commit SHA to create branch from.
         """
+        check_dict_has_certain_keys(kwargs, ["branch", "ref"])
+
         output = self.api_post(
             f"/projects/{repo_id}/repository/branches",
             params={"branch": kwargs["branch"], "ref": kwargs["ref"]},
@@ -396,11 +437,16 @@ class GitLabOperator(Request):
             headers=self.headers,
         ).json()
 
-    def create_commit(self, repo_id: str, branch: str, commit_message: str, actions=[]) -> dict[str, Any]:
+    # CHANGE
+    def create_commit(
+        self, repo_id: str, branch: str, commit_message: str, actions: Union[None, dict[str, Any]] = None
+    ) -> dict[str, Any]:
         """
         Args:
             actions: [ create , delete , move , update , chmod ]
         """
+        if actions is None:
+            actions = []
         return self.api_post(
             f"/projects/{repo_id}/repository/commits",
             data={"branch": branch, "commit_message": commit_message, "actions": actions},
@@ -528,7 +574,11 @@ class GitLabOperator(Request):
         return self.__gl_file_common_process(repo_id, args, "PUT")
 
     def gl_get_file(self, repo_id: str, branch: str, file_path: str) -> dict[str, Any]:
-        output = self.__api_get(f"/projects/{repo_id}/repository/files/{file_path}", params={"ref": branch}).json()
+        output = self.__api_get(
+            f"/projects/{repo_id}/repository/files/{file_path}",
+            params={"ref": branch},
+            headers=self.headers,
+        ).json()
         return {
             "file_name": output["file_name"],
             "file_path": output["file_path"],
@@ -552,7 +602,54 @@ class GitLabOperator(Request):
                 "author_name": config.AM_ACCOUNT,
                 "commit_message": args["commit_message"],
             },
+            headers=self.headers,
         )
+
+    def gl_get_repository_tree(self, repo_id: str, branch: str) -> dict[str, Any]:
+        output = self.api_get(
+            f"/projects/{repo_id}/repository/tree", params={"ref": branch}, headers=self.headers
+        ).json()
+        return {"file_list": output}
+
+    # CHANGE
+    def gl_operate_multi_files(self, repo_id: str, kwargs: dict[str, Any]):
+        """
+        Args:
+            kwargs:
+            - *branch: Name of the branch to commit into, if it is to create a new branch, also provide `start_branch`
+            - *commit_message: Commit message
+            - *action:
+                - *action: available values: create, delete, move, update or chmod
+                - *file_path: Full path to the file. For example: lib/class.rb.
+                - content: File content, required for all except delete, chmod and move
+                - encoding: text or base64. text is default.
+            - start_branch: Name of the branch to start the new commit from
+            - author_email: Specify the commit author's email address
+            - author_name: Specify the commit author's name
+            - commit_message: Commit message
+        """
+        check_dict_has_certain_keys(kwargs, ["branch", "commit_message", "action"])
+        check_dict_has_certain_keys(kwargs.get("action", {}), ["action", "file_path"])
+
+        output = self.api_post(f"/projects/{repo_id}/repository/commits", data=kwargs, headers=self.headers).json()
+        return output
+
+    # Weird
+    def gl_get_raw_from_lib(self, repo_id: str, path: str, branch_name: Union[str, None] = None) -> bytes:
+        pj = self.gl.projects.get(repo_id)
+        if branch_name is None:
+            branch_name = pj.default_branch
+
+        f_byte = pj.files.raw(file_path=path, ref=branch_name)
+        return f_byte
+
+    def gl_get_file_from_lib(self, repo_id: str, path: str, branch_name: Union[str, None] = None) -> bytes:
+        pj = self.gl.projects.get(repo_id)
+        if branch_name is None:
+            branch_name = pj.default_branch
+
+        f_byte = pj.files.get(file_path=path, ref=branch_name)
+        return f_byte
 
     ############################
     # Releases
@@ -567,4 +664,3 @@ class GitLabOperator(Request):
         return self.__api_delete(f"/projects/{repo_id}/releases/{tag_name}")
 
 
-# gl_get_network
