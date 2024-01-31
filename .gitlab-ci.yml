@@ -13,9 +13,13 @@ Test--SonarQube source code scan:
     CHART_TYPE: normal
   only:
   - master
+Test--Anchore SBOM source code scan:
+  variables:
+    iiidevops: anchore-code
+  only:
+  - skip
 Test--Checkmarx source code scan:
   variables:
     iiidevops: checkmarx
   only:
   - master
-
